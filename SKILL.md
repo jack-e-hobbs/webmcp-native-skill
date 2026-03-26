@@ -1,12 +1,12 @@
 ---
 name: webmcp-native
-description: Use when Gemini CLI needs to interact with a web application to perform searches, bookings, or state-based actions on a WebMCP-compliant site.
+description: Use when the agent needs to interact with a web application to perform searches, bookings, or state-based actions on a WebMCP-compliant site.
 ---
 
 # webmcp-native
 
 ## Overview
-This skill transforms Gemini CLI from a surface-level "scraper" into a native WebMCP participant. It enables the agent to discover, validate, and execute deterministic tools exposed by websites following the 2026 WebMCP standard.
+This skill transforms the agent from a surface-level "scraper" into a native WebMCP participant. It enables the agent to discover, validate, and execute deterministic tools exposed by websites following the 2026 WebMCP standard.
 
 ## Discovery Workflow
 When navigating to a new URL, perform the following "Handshake" sequence before attempting visual scraping:
@@ -41,4 +41,4 @@ For detailed protocol mechanics and JSON schema requirements, see [references/we
 - Use [scripts/webmcp-bridge.js](scripts/webmcp-bridge.js) for standardized tool calling and error reporting.
 
 ---
-*Created by Jack Hobbs in collaboration with Gemini 3 CLI.*
+*Created by Jack Hobbs in collaboration with AI assistance.*
