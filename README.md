@@ -1,4 +1,5 @@
-# WebMCP Native Skill
+# WebMCP Native Skill 🚧
+NOTE 2025-03-06: this is currently in TESTING and is not ready for wider adoption 
 
 A standardized procedural bridge for AI CLI Agents. This skill enables agents to discover, validate, and execute **WebMCP (Web Model Context Protocol)** tools on any compliant website.
 
