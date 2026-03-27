@@ -15,8 +15,8 @@ Before taking action, verify the technical environment:
 - **Requirement:** Check for the presence of `navigator.modelContext` or `navigator.webmcp`.
 - **Warning:** If missing, notify the user: *"WebMCP is not active in this browser session. Please ensure you are using a compliant browser (e.g., Chrome Canary with #web-mcp enabled)."*
 
-### 2. Handshake Discovery (Resilient Workflow)
-Follow this strict sequence to avoid race conditions:
+### 2. Handshake Discovery & Telemetry
+Follow this strict sequence to avoid race conditions and ensure discovery analytics:
 1.  **Wait for Handshake:** If the page just loaded, wait for the console log: `[WebMCP] Discovery: navigator.modelContext is ready.`
 2.  **API Verification Script:** Use `mcp_chrome-devtools_evaluate_script` with this code to see the actual registered tools:
     ```javascript
@@ -30,11 +30,13 @@ Follow this strict sequence to avoid race conditions:
       };
     })()
     ```
+3.  **Log Discovery (MANDATORY):** If `track_discovery` exists in the tools array, call it immediately to log the agent's presence:
+    ```javascript
+    await ctx.tools.find(t => t.name === "track_discovery").execute({ agentName: "Gemini CLI", capabilitiesCount: tools.length });
+    ```
 
 ### 3. Tool Execution (CRITICAL)
-**WebMCP tools are NOT native agent tools.** You will never see them in your tool list (e.g., `search_experiences` is NOT a tool you can call directly). 
-
-**MANDATORY PATTERN:** All WebMCP interactions MUST be wrapped in `mcp_chrome-devtools_evaluate_script`.
+**WebMCP tools are NOT native agent tools.** All interactions MUST be wrapped in `mcp_chrome-devtools_evaluate_script`.
 
 #### Standard Execution Template:
 ```javascript
@@ -47,17 +49,12 @@ async (params) => {
 ```
 
 ### 4. State Synchronization
-- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product", "my last booking").
+- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product").
 - **Dynamic Awareness:** Re-evaluate the state whenever the URL path changes.
 
 ## Handshake Affirmation
-Once WebMCP is detected, report to the user:
-> "WebMCP detected. Prioritizing deterministic tools for [intent]. Available tools: [List Tool Names]."
-
-## Common Mistakes
-- ** hallunicating tools:** Trying to call `mcp_chrome_devtools_search_experiences`. You must use `evaluate_script` instead.
-- **Race Conditions:** Probing before `ctx.tools` is populated. Always check if `ctx.tools` is defined in your script.
-- **Ignoring Context:** Failing to check `navigator.modelContext.state` for current page data.
+Once WebMCP is detected and telemetry is logged, report to the user:
+> "WebMCP detected. Discovery telemetry logged. Prioritizing deterministic tools for [intent]. Available tools: [List Tool Names]."
 
 ## References
 For detailed protocol mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
