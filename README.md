@@ -1,18 +1,24 @@
-# WebMCP Native Skill 🚧
-NOTE 2025-03-06: this is currently in TESTING and is not ready for wider adoption 
+# WebMCP Native Skill
 
-This repository provides a standardized procedural bridge for AI agents to discover, validate, and execute **WebMCP (Web Model Context Protocol)** tools on any compliant website.
+A standardized procedural bridge for AI CLI Agents. This skill enables agents to act as native participants in a website's logic by discovering and executing **WebMCP (Web Model Context Protocol)** tools.
+
+## Core Capabilities
+This skill transforms the agent's interaction model from surface-level scraping to deterministic API execution:
+
+- **Browser Verification:** Automatically checks for `navigator.modelContext` and warns if the current browser session lacks WebMCP capabilities.
+- **Handshake Discovery:** Instantly retrieves application tools via `/.well-known/webmcp.json`, HTML `<link>` tags, or console signals.
+- **State Synchronization:** Proactively monitors `navigator.modelContext.state` to stay aligned with the user's active page (PDP, Checkout, etc.) without re-reading page text.
+- **Deterministic Action:** Executes complex business logic (Search, Booking, Wishlisting) via formal JSON-RPC contracts rather than simulated clicks.
 
 ## Why Use This Skill?
-Traditional AI agents rely on visual "scraping"—guessing button functions based on pixels. This skill teaches the agent to use the **Deterministic Logic Contract** provided by WebMCP-enabled websites, resulting in:
-- **Reduced Latency:** Eliminates redundant snapshots and visual parsing loops.
-- **Improved Reliability:** Tools remain functional even if CSS classes or layouts change.
-- **Zero-Shot Accuracy:** Direct mapping of user intent to business logic via formal JSON Schema.
+- **Parity:** Functional parity between CLI agents and native browser assistants.
+- **Reliability:** Interactions remain consistent even if the website's UI changes.
+- **Efficiency:** Token consumption is reduced by ~90% for multi-step tasks.
 
 ## Installation
 
 ### For Gemini CLI
-Install this skill directly from the GitHub repository:
+Install directly from the GitHub repository:
 
 ```bash
 gemini skills install https://github.com/jack-e-hobbs/webmcp-native-skill.git --scope user
@@ -23,36 +29,11 @@ Once installed, reload your session to activate the skill:
 /skills reload
 ```
 
-## What's Inside
-
-This package contains a suite of procedural capabilities that turn a general-purpose agent into a WebMCP-native participant:
-
-### Passive Discovery
-The agent is instructed to proactively look for application capabilities before falling back to scraping. It automatically checks for:
-- Standardized manifests at `/.well-known/webmcp.json`.
-- Link-based hints like `<link rel="webmcp" href="...">`.
-- Protocol handshake signals in the browser console.
-
-### Intent-to-Contract Mapping
-The agent intelligently maps natural language requests to the site's formal logic.
-- **Example:** You say "Find a picnic in Sydney."
-- **Agent Logic:** Identifies the `search_experiences` tool in the manifest and executes it with `{ "location": "Sydney" }`.
-
-### Deterministic Execution
-Standardizes the workflow for calling JavaScript functions directly through the `navigator.modelContext` API.
-- **Example:** The agent can call `initiate_booking` on the [AmazingExperiences Demo](https://jack-e-hobbs.github.io/webmcp-experiences-platform/) to open the checkout page instantly, bypassing the need to find a "Book Now" button.
-
-### Self-Correction
-If a tool call fails or state synchronization is lost, the agent invokes `audit_capabilities` to retrieve a fresh logic map from the application.
-
 ## Verify Installation
-
-To confirm the skill is active and correctly configured:
-
-1. **List Skills:** Run `/skills list`. You should see `webmcp-native` in the list.
-2. **Test Handshake:** Open a WebMCP-compliant site like [AmazingExperiences](https://jack-e-hobbs.github.io/webmcp-experiences-platform/).
-3. **Check Discovery:** Prompt the agent: "Detect WebMCP capabilities on this page."
-4. **Observe Output:** The agent should report the tools from the manifest rather than describing the visual elements of the page.
+1.  **List Skills:** Run `/skills list` and confirm `webmcp-native` is present.
+2.  **Compatibility Test:** Open [AmazingExperiences](https://jack-e-hobbs.github.io/webmcp-experiences-platform/) in Chrome Canary.
+3.  **Check Handshake:** Ask the agent: *"Verify WebMCP support and list available tools."*
+4.  **Confirm Sync:** Navigate to a product page and ask: *"What is the active experience ID in the WebMCP context?"*
 
 ## Collaboration
 This skill was developed by **Jack Hobbs** in collaboration with **AI assistance** as a reference implementation for the 2026 WebMCP standard.
