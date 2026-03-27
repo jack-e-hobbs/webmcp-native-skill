@@ -11,42 +11,53 @@ This skill provides a standardized protocol for discovering and interacting with
 ## Core Capabilities
 
 ### 1. Compatibility Verification
-Before taking action, the agent must verify the technical environment:
-- **Browser Support:** Check for the presence of `navigator.modelContext` or `navigator.webmcp`.
-- **Warning:** If the native API is missing, notify the user: *"WebMCP is not active in this browser session. Please ensure you are using a compliant browser (e.g., Chrome Canary with #web-mcp enabled)."*
+Before taking action, verify the technical environment:
+- **Requirement:** Check for the presence of `navigator.modelContext` or `navigator.webmcp`.
+- **Warning:** If missing, notify the user: *"WebMCP is not active in this browser session. Please ensure you are using a compliant browser (e.g., Chrome Canary with #web-mcp enabled)."*
 
 ### 2. Handshake Discovery (Resilient Workflow)
-Lite models must follow this strict sequence to avoid race conditions or protocol hallucinations:
-1.  **Wait for Handshake:** If the page just loaded, wait up to 2 seconds for the console handshake: `[WebMCP] Discovery: navigator.modelContext is ready.`
-2.  **Manifest Probe:** Retrieve `/.well-known/webmcp.json` or scan `<link rel="webmcp">`.
-3.  **API Verification Script:** Always evaluate this specific script to see the *actual* registered tools:
+Follow this strict sequence to avoid race conditions:
+1.  **Wait for Handshake:** If the page just loaded, wait for the console log: `[WebMCP] Discovery: navigator.modelContext is ready.`
+2.  **API Verification Script:** Use `mcp_chrome-devtools_evaluate_script` with this code to see the actual registered tools:
     ```javascript
     (() => {
       const ctx = navigator.modelContext || navigator.webmcp;
-      return ctx ? { present: true, tools: ctx.tools.map(t => t.name) } : { present: false };
+      if (!ctx) return { present: false };
+      return { 
+        present: true, 
+        tools: (ctx.tools || []).map(t => ({ name: t.name, description: t.description, schema: t.inputSchema })),
+        state: ctx.state || {}
+      };
     })()
     ```
 
-### 3. Execution & State Synchronization
-- **Strict Adherence:** ONLY use tools returned by the verification script. Do NOT assume standard MCP methods like `get_state` or `discover_tools` exist unless they are explicitly in the `tools` array.
-- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product").
-- **Tool Call Pattern:**
-    ```javascript
-    async (params) => {
-      const ctx = navigator.modelContext;
-      const tool = ctx.tools.find(t => t.name === "TOOL_NAME");
-      return await tool.execute(params);
-    }
-    ```
+### 3. Tool Execution (CRITICAL)
+**WebMCP tools are NOT native agent tools.** You will never see them in your tool list (e.g., `search_experiences` is NOT a tool you can call directly). 
+
+**MANDATORY PATTERN:** All WebMCP interactions MUST be wrapped in `mcp_chrome-devtools_evaluate_script`.
+
+#### Standard Execution Template:
+```javascript
+async (params) => {
+  const ctx = navigator.modelContext || navigator.webmcp;
+  const tool = ctx.tools.find(t => t.name === "TOOL_NAME_HERE");
+  if (!tool) throw new Error("Tool not found in context");
+  return await tool.execute(params);
+}
+```
+
+### 4. State Synchronization
+- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product", "my last booking").
+- **Dynamic Awareness:** Re-evaluate the state whenever the URL path changes.
 
 ## Handshake Affirmation
-Once WebMCP is detected and tools are retrieved, report to the user:
-> "WebMCP v1.3 detected. I have verified 7 deterministic tools from the site's logic contract. Prioritizing API over scraping."
+Once WebMCP is detected, report to the user:
+> "WebMCP detected. Prioritizing deterministic tools for [intent]. Available tools: [List Tool Names]."
 
 ## Common Mistakes
-- **Protocol Hallucination:** Assuming standard MCP boilerplate exists. Always check the `tools` array first.
-- **Race Conditions:** Probing before React hooks have finished tool registration.
-- **Scraping First:** Reverting to snapshots before the 2-second handshake window has closed.
+- ** hallunicating tools:** Trying to call `mcp_chrome_devtools_search_experiences`. You must use `evaluate_script` instead.
+- **Race Conditions:** Probing before `ctx.tools` is populated. Always check if `ctx.tools` is defined in your script.
+- **Ignoring Context:** Failing to check `navigator.modelContext.state` for current page data.
 
 ## References
 For detailed protocol mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
