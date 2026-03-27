@@ -15,33 +15,41 @@ Before taking action, the agent must verify the technical environment:
 - **Browser Support:** Check for the presence of `navigator.modelContext` or `navigator.webmcp`.
 - **Warning:** If the native API is missing, notify the user: *"WebMCP is not active in this browser session. Please ensure you are using a compliant browser (e.g., Chrome Canary with #web-mcp enabled)."*
 
-### 2. Handshake Discovery
-Upon landing on a URL, perform this discovery sequence to retrieve tools:
-1.  **Standard Probe:** Retrieve `/.well-known/webmcp.json`.
-2.  **HTML Hinting:** Scan for `<link rel="webmcp" href="...">`.
-3.  **Signal Watch:** Listen for the console handshake: `[WebMCP] Discovery: navigator.modelContext is ready.`
+### 2. Handshake Discovery (Resilient Workflow)
+Lite models must follow this strict sequence to avoid race conditions or protocol hallucinations:
+1.  **Wait for Handshake:** If the page just loaded, wait up to 2 seconds for the console handshake: `[WebMCP] Discovery: navigator.modelContext is ready.`
+2.  **Manifest Probe:** Retrieve `/.well-known/webmcp.json` or scan `<link rel="webmcp">`.
+3.  **API Verification Script:** Always evaluate this specific script to see the *actual* registered tools:
+    ```javascript
+    (() => {
+      const ctx = navigator.modelContext || navigator.webmcp;
+      return ctx ? { present: true, tools: ctx.tools.map(t => t.name) } : { present: false };
+    })()
+    ```
 
-### 3. State Synchronization
-Instead of scraping pixels, the agent must check the "Injected Context":
-- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product", "my last booking").
-- **Dynamic Awareness:** Re-evaluate the state whenever the URL path changes to stay synchronized with the user's view.
+### 3. Execution & State Synchronization
+- **Strict Adherence:** ONLY use tools returned by the verification script. Do NOT assume standard MCP methods like `get_state` or `discover_tools` exist unless they are explicitly in the `tools` array.
+- **Query State:** Evaluate `navigator.modelContext.state` to resolve relative terms (e.g., "this product").
+- **Tool Call Pattern:**
+    ```javascript
+    async (params) => {
+      const ctx = navigator.modelContext;
+      const tool = ctx.tools.find(t => t.name === "TOOL_NAME");
+      return await tool.execute(params);
+    }
+    ```
 
-### 4. Deterministic Execution
-Tools must be called via the native API using structured JSON.
-- **Pattern:** `navigator.modelContext.tools.find(t => t.name === "TOOL_NAME").execute(params)`.
-- **Self-Correction:** If a call fails, invoke `audit_capabilities` (if available) to get a fresh logic map.
-
-## Handshake Affirmaton
+## Handshake Affirmation
 Once WebMCP is detected and tools are retrieved, report to the user:
-> "WebMCP v1.3 detected. I am using the deterministic logic contract for this site. Available tools: [List Tool Names]."
+> "WebMCP v1.3 detected. I have verified 7 deterministic tools from the site's logic contract. Prioritizing API over scraping."
 
 ## Common Mistakes
-- **Scraping First:** Reverting to snapshots before checking for a manifest.
-- **Ignoring Versioning:** Calling tools without verifying the `protocolVersion` in the manifest.
-- **Mechanical Clicks:** Using `click()` on a button when a high-fidelity tool exists.
+- **Protocol Hallucination:** Assuming standard MCP boilerplate exists. Always check the `tools` array first.
+- **Race Conditions:** Probing before React hooks have finished tool registration.
+- **Scraping First:** Reverting to snapshots before the 2-second handshake window has closed.
 
 ## References
-For detailed mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
+For detailed protocol mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
 
 ---
 *Created by Jack Hobbs.*
