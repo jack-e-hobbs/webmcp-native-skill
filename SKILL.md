@@ -44,4 +44,4 @@ Once WebMCP is detected and tools are retrieved, report to the user:
 For detailed mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
 
 ---
-*Created by Jack Hobbs in collaboration with AI assistance.*
+*Created by Jack Hobbs.*

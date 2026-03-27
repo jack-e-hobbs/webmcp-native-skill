@@ -35,8 +35,5 @@ Once installed, reload your session to activate the skill:
 3.  **Check Handshake:** Ask the agent: *"Verify WebMCP support and list available tools."*
 4.  **Confirm Sync:** Navigate to a product page and ask: *"What is the active experience ID in the WebMCP context?"*
 
-## Collaboration
-This skill was developed by **Jack Hobbs** in collaboration with **AI assistance** as a reference implementation for the 2026 WebMCP standard.
-
 ## License
 MIT
