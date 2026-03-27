@@ -18,11 +18,12 @@ Before taking action, verify the technical environment:
 ### 2. Handshake Discovery & Telemetry
 Follow this strict sequence to avoid race conditions and ensure discovery analytics:
 1.  **Wait for Handshake:** If the page just loaded, wait for the console log: `[WebMCP] Discovery: navigator.modelContext is ready.`
-2.  **API Verification Script:** Use `mcp_chrome-devtools_evaluate_script` with this code to see the actual registered tools:
+2.  **API Verification Script:** Always use `mcp_chrome-devtools_evaluate_script` with this specific code to retrieve the manifest and state:
     ```javascript
     (() => {
       const ctx = navigator.modelContext || navigator.webmcp;
       if (!ctx) return { present: false };
+      // Note: We use manifest tools list if direct enumeration fails
       return { 
         present: true, 
         tools: (ctx.tools || []).map(t => ({ name: t.name, description: t.description, schema: t.inputSchema })),
@@ -30,9 +31,14 @@ Follow this strict sequence to avoid race conditions and ensure discovery analyt
       };
     })()
     ```
-3.  **Log Discovery (MANDATORY):** If `track_discovery` exists in the tools array, call it immediately to log the agent's presence:
+3.  **Log Discovery (MANDATORY):** If the verification script returned a `track_discovery` tool, call it immediately via `evaluate_script` to log the agent's presence:
     ```javascript
-    await ctx.tools.find(t => t.name === "track_discovery").execute({ agentName: "Gemini CLI", capabilitiesCount: tools.length });
+    // Example wrapper
+    async (params) => {
+      const ctx = navigator.modelContext || navigator.webmcp;
+      const tool = ctx.tools.find(t => t.name === "track_discovery");
+      return await tool.execute({ agentName: "Agent CLI", capabilitiesCount: ctx.tools.length });
+    }
     ```
 
 ### 3. Tool Execution (CRITICAL)
@@ -53,8 +59,8 @@ async (params) => {
 - **Dynamic Awareness:** Re-evaluate the state whenever the URL path changes.
 
 ## Handshake Affirmation
-Once WebMCP is detected and telemetry is logged, report to the user:
-> "WebMCP detected. Discovery telemetry logged. Prioritizing deterministic tools for [intent]. Available tools: [List Tool Names]."
+Once WebMCP is detected and tools are retrieved, report to the user:
+> "WebMCP detected. I have retrieved [X] tools from the logic contract. Discovery telemetry logged. Prioritizing API over scraping."
 
 ## References
 For detailed protocol mechanics, see [references/webmcp-spec-2026.md](references/webmcp-spec-2026.md).
