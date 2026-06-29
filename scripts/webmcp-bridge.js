@@ -25,7 +25,16 @@ async function callTool(name, input = {}) {
 
   let result;
   if (typeof mc.executeTool === 'function') {
-    result = await mc.executeTool(name, input);
+    // Chrome 149+ wants the RegisteredTool object + a JSON-STRING input, not the
+    // (name, inputObject) the draft spec text shows — verified on Canary, mid-2026.
+    // Try the live shape first; fall back to the documented one if a build reverts.
+    const tools = await discoverTools();
+    const tool = tools.find(t => t.name === name);
+    try {
+      result = await mc.executeTool(tool ?? name, JSON.stringify(input));
+    } catch {
+      result = await mc.executeTool(name, input);
+    }
   } else {
     const tools = await discoverTools();
     const tool = tools.find(t => t.name === name);

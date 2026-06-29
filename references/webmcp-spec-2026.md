@@ -52,8 +52,16 @@ There is **no readable `.tools` array** on the modelContext object. Reading
 
 ```js
 const tools  = await mc.getTools();              // -> [{name, description, inputSchema, annotations}], alphabetical
-const result = await mc.executeTool(name, input); // -> the tool's return value
+// Chrome 149+ actual signature: the RegisteredTool OBJECT + a JSON-STRING input.
+// (The draft spec text below shows (name, inputObject); the shipped build differs.)
+const tool   = tools.find(t => t.name === name);
+const result = await mc.executeTool(tool, JSON.stringify(input)); // -> the tool's return value
 ```
+
+> **Verified on Chrome Canary, mid-2026:** passing a string name throws
+> `not of type 'RegisteredTool'`; passing an input *object* throws
+> `Failed to parse input arguments`. Use the tool object + `JSON.stringify(input)`.
+> `inputSchema` is also a JSON *string* in `getTools()` output — string-in, string-out.
 
 - For a **Puppeteer/CDP-driven** agent the privileged path is `page.webmcp.tools()`
   + the returned `WebMCPTool.execute({...})`, with `toolsadded` / `toolsremoved` /
@@ -114,7 +122,7 @@ to external MCP agents. Useful for local dev; not the spec itself.
 | `provideContext({ state, tools })` | removed — use `registerTool`/`unregisterTool` |
 | page `state` passed to agent | removed — expose as a read-only tool |
 | read `ctx.tools` array | `await mc.getTools()` (no array) |
-| call `tool.execute()` off the array | `await mc.executeTool(name, input)` |
+| call `tool.execute()` off the array | `await mc.executeTool(toolObject, JSON.stringify(input))` (Canary; draft text says `(name, input)`) |
 | `execute` returns `{content:[{type,text}]}` | returns a plain value/string |
 | `readOnlyHint` | still valid (+ `untrustedContentHint`) |
 | declarative `toolname`/`tooldescription`/`toolautosubmit` | still valid |

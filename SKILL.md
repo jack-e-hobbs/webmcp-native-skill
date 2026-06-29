@@ -52,8 +52,15 @@ async () => {
   const mc = document.modelContext || navigator.modelContext;
   const NAME  = "search_experiences";          // <- the tool you chose
   const INPUT = { location: "Melbourne" };      // <- params matching its inputSchema
-  if (typeof mc.executeTool === 'function') return await mc.executeTool(NAME, INPUT);
-  // legacy fallback:
+  if (typeof mc.executeTool === 'function') {
+    // Chrome 149+ wants the RegisteredTool OBJECT + a JSON-STRING input — NOT
+    // (name, object) as the draft spec shows. Verified on Canary, mid-2026.
+    const tools = typeof mc.getTools === 'function' ? await mc.getTools() : [];
+    const tool = tools.find(t => t.name === NAME);
+    try { return await mc.executeTool(tool ?? NAME, JSON.stringify(INPUT)); }
+    catch { return await mc.executeTool(NAME, INPUT); }   // fallback if a build reverts
+  }
+  // legacy fallback (older/polyfilled pages exposing tool.execute):
   const tools = typeof mc.getTools === 'function' ? await mc.getTools() : (mc.tools || []);
   const tool = tools.find(t => t.name === NAME);
   if (!tool || typeof tool.execute !== 'function') throw new Error("Tool not executable: " + NAME);

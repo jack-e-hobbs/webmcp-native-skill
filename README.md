@@ -36,8 +36,9 @@ The agent loads it on demand when a task involves discovering/calling a site's W
 2. Ask the agent: *"Discover this site's WebMCP tools and list them."*
    → expect a tool list (e.g. `search_experiences`, `get_availability`, …).
 3. Ask: *"Use the WebMCP tools to find Melbourne experiences."*
-   → expect a deterministic `executeTool("search_experiences", { location: "Melbourne" })`
-   call returning results, not DOM scraping.
+   → expect a deterministic `executeTool(searchTool, JSON.stringify({ location: "Melbourne" }))`
+   call (tool object + JSON-string input — the shipped Canary signature) returning results,
+   not DOM scraping.
 
 ## License
 MIT
