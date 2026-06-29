@@ -51,17 +51,23 @@ There is **no readable `.tools` array** on the modelContext object. Reading
 `mc.tools` returns `undefined`. Discovery and execution are async methods:
 
 ```js
-const tools  = await mc.getTools();              // -> [{name, description, inputSchema, annotations}], alphabetical
-// Chrome 149+ actual signature: the RegisteredTool OBJECT + a JSON-STRING input.
-// (The draft spec text below shows (name, inputObject); the shipped build differs.)
-const tool   = tools.find(t => t.name === name);
-const result = await mc.executeTool(tool, JSON.stringify(input)); // -> the tool's return value
+const tools  = await mc.getTools();               // -> [{name, description, inputSchema, annotations}], alphabetical
+const result = await mc.executeTool(name, input);  // (name, inputObject) — agent path; see below
 ```
 
-> **Verified on Chrome Canary, mid-2026:** passing a string name throws
-> `not of type 'RegisteredTool'`; passing an input *object* throws
-> `Failed to parse input arguments`. Use the tool object + `JSON.stringify(input)`.
-> `inputSchema` is also a JSON *string* in `getTools()` output — string-in, string-out.
+> **`executeTool` has TWO live shapes (verified mid-2026) — they differ by context:**
+>
+> | Where you run | Signature | Return |
+> | --- | --- | --- |
+> | **Agent path** — injected polyfill (Claude extension / chrome-devtools bridge); the context this skill runs in | `executeTool(name, inputObject)` | `{content:[{type:"text",text}]}` envelope |
+> | **Native Chrome 149+** — human DevTools console (main world) | `executeTool(toolObject, JSON.stringify(input))` | plain string |
+>
+> Native rejects a string name (`not of type 'RegisteredTool'`) and an object input
+> (`Failed to parse input arguments`). The polyfill rejects a tool object
+> (`Tool not found/executable: [object Object]`) but does **NOT** reject a JSON-string
+> input — it silently runs with no params (e.g. search returns ALL rows). So on the
+> agent path pass the **object**, not a string. `getTools()` is identical across both.
+> Robust code: try `(name, object)` first, fall back to `(toolObject, JSON.stringify(input))`.
 
 - For a **Puppeteer/CDP-driven** agent the privileged path is `page.webmcp.tools()`
   + the returned `WebMCPTool.execute({...})`, with `toolsadded` / `toolsremoved` /
@@ -122,7 +128,7 @@ to external MCP agents. Useful for local dev; not the spec itself.
 | `provideContext({ state, tools })` | removed — use `registerTool`/`unregisterTool` |
 | page `state` passed to agent | removed — expose as a read-only tool |
 | read `ctx.tools` array | `await mc.getTools()` (no array) |
-| call `tool.execute()` off the array | `await mc.executeTool(toolObject, JSON.stringify(input))` (Canary; draft text says `(name, input)`) |
+| call `tool.execute()` off the array | `await mc.executeTool(name, input)` (agent path; native console wants `(toolObject, JSON.stringify(input))` — see above) |
 | `execute` returns `{content:[{type,text}]}` | returns a plain value/string |
 | `readOnlyHint` | still valid (+ `untrustedContentHint`) |
 | declarative `toolname`/`tooldescription`/`toolautosubmit` | still valid |

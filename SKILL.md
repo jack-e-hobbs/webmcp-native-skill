@@ -53,12 +53,17 @@ async () => {
   const NAME  = "search_experiences";          // <- the tool you chose
   const INPUT = { location: "Melbourne" };      // <- params matching its inputSchema
   if (typeof mc.executeTool === 'function') {
-    // Chrome 149+ wants the RegisteredTool OBJECT + a JSON-STRING input — NOT
-    // (name, object) as the draft spec shows. Verified on Canary, mid-2026.
-    const tools = typeof mc.getTools === 'function' ? await mc.getTools() : [];
-    const tool = tools.find(t => t.name === NAME);
-    try { return await mc.executeTool(tool ?? NAME, JSON.stringify(INPUT)); }
-    catch { return await mc.executeTool(NAME, INPUT); }   // fallback if a build reverts
+    // The agent-side executeTool you reach (injected polyfill — Claude extension /
+    // chrome-devtools bridge) wants (NAME, inputOBJECT). Do NOT JSON.stringify the
+    // input: the polyfill won't throw, it just runs with no params (search returns
+    // ALL rows). Native Chrome's DevTools console differs — (toolObject, jsonString)
+    // — handled as a fallback below. Verified live, mid-2026.
+    try { return await mc.executeTool(NAME, INPUT); }
+    catch {
+      const tools = typeof mc.getTools === 'function' ? await mc.getTools() : [];
+      const tool = tools.find(t => t.name === NAME);
+      return await mc.executeTool(tool, JSON.stringify(INPUT));
+    }
   }
   // legacy fallback (older/polyfilled pages exposing tool.execute):
   const tools = typeof mc.getTools === 'function' ? await mc.getTools() : (mc.tools || []);

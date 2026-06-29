@@ -25,15 +25,20 @@ async function callTool(name, input = {}) {
 
   let result;
   if (typeof mc.executeTool === 'function') {
-    // Chrome 149+ wants the RegisteredTool object + a JSON-STRING input, not the
-    // (name, inputObject) the draft spec text shows — verified on Canary, mid-2026.
-    // Try the live shape first; fall back to the documented one if a build reverts.
-    const tools = await discoverTools();
-    const tool = tools.find(t => t.name === name);
+    // TWO implementations exist (verified live, mid-2026):
+    //  • Agent path — an injected polyfill (Claude extension / chrome-devtools bridge,
+    //    the context this skill runs in): executeTool(NAME, inputOBJECT). This is primary.
+    //  • Native Chrome 149+ in the human DevTools console: executeTool(toolOBJECT,
+    //    JSON.stringify(input)). Used only as a fallback here.
+    // Do NOT pass a JSON string to the polyfill: it does NOT throw, it silently runs
+    // with no params (e.g. search returns ALL rows). So pass the object, and only
+    // stringify on the native fallback.
     try {
-      result = await mc.executeTool(tool ?? name, JSON.stringify(input));
-    } catch {
       result = await mc.executeTool(name, input);
+    } catch {
+      const tools = await discoverTools();
+      const tool = tools.find(t => t.name === name);
+      result = await mc.executeTool(tool, JSON.stringify(input));
     }
   } else {
     const tools = await discoverTools();
