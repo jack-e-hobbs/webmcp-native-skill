@@ -1,31 +1,42 @@
 /**
- * WebMCP Bridge Helper
- * Standardized tool calling for CLI Agents.
+ * WebMCP Bridge Helper (optional)
+ *
+ * Reference helpers for the current WebMCP API (document.modelContext, mid-2026).
+ * The SKILL.md flow inlines these patterns directly into evaluate-script calls;
+ * this file documents the canonical shapes. See references/webmcp-spec-2026.md.
  */
-window.__webmcp_bridge = {
-  callTool: async (toolName, params) => {
-    try {
-      const modelContext = navigator.modelContext || navigator.webmcp;
-      if (!modelContext) throw new Error("WebMCP API not found on this page.");
 
-      const tool = modelContext.tools.find(t => t.name === toolName);
-      if (!tool) throw new Error(`Tool '${toolName}' not found in registry.`);
+// Resolve the context object (navigator.* is deprecated; document.* is current).
+const getModelContext = () => document.modelContext || navigator.modelContext || null;
 
-      console.log(`[WebMCP Bridge] Calling ${toolName}...`);
-      const result = await tool.execute(params);
-      
-      return {
-        success: true,
-        tool: toolName,
-        data: result
-      };
-    } catch (error) {
-      console.error(`[WebMCP Bridge] Error in ${toolName}:`, error.message);
-      return {
-        success: false,
-        tool: toolName,
-        error: error.message
-      };
+// Discover available tools. Returns [] if WebMCP is absent.
+async function discoverTools() {
+  const mc = getModelContext();
+  if (!mc) return [];
+  if (typeof mc.getTools === 'function') return await mc.getTools();
+  return Array.isArray(mc.tools) ? mc.tools : []; // legacy / polyfilled pages only
+}
+
+// Call a tool by name. Normalises both the current (plain value) and legacy
+// ({content:[{text}]}) return shapes to a string.
+async function callTool(name, input = {}) {
+  const mc = getModelContext();
+  if (!mc) throw new Error('WebMCP not available on this page.');
+
+  let result;
+  if (typeof mc.executeTool === 'function') {
+    result = await mc.executeTool(name, input);
+  } else {
+    const tools = await discoverTools();
+    const tool = tools.find(t => t.name === name);
+    if (!tool || typeof tool.execute !== 'function') {
+      throw new Error(`Tool '${name}' not found or not executable.`);
     }
+    result = await tool.execute(input);
   }
-};
+
+  const text = result && result.content && result.content[0] && result.content[0].text;
+  return text !== undefined ? text : result;
+}
+
+window.__webmcp_bridge = { getModelContext, discoverTools, callTool };

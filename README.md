@@ -1,39 +1,43 @@
 # WebMCP Native Skill
 
-A standardized procedural bridge for AI CLI Agents. This skill enables agents to act as native participants in a website's logic by discovering and executing **WebMCP (Web Model Context Protocol)** tools.
+An agent skill that lets a CLI coding agent act through a website's **WebMCP**
+(Web Model Context Protocol) tools instead of scraping the DOM. The agent detects
+`document.modelContext`, enumerates tools with `getTools()`, and runs them with
+`executeTool()` — all via its browser MCP's evaluate-script tool.
 
-## Core Capabilities
-This skill transforms the agent's interaction model from surface-level scraping to deterministic API execution:
+- **Reliable:** interactions survive UI changes — they call the site's own API contract.
+- **Efficient:** deterministic tool calls instead of multi-step DOM scraping.
+- **Honest:** if a page has no WebMCP, the skill says so and falls back to the DOM.
 
-- **Browser Verification:** Automatically checks for `navigator.modelContext` and warns if the current browser session lacks WebMCP capabilities.
-- **Handshake Discovery:** Instantly retrieves application tools via `/.well-known/webmcp.json`, HTML `<link>` tags, or console signals.
-- **State Synchronization:** Proactively monitors `navigator.modelContext.state` to stay aligned with the user's active page (PDP, Checkout, etc.) without re-reading page text.
-- **Deterministic Action:** Executes complex business logic (Search, Booking, Wishlisting) via formal JSON-RPC contracts rather than simulated clicks.
+Tracks the current spec (mid-2026): `document.modelContext`, `getTools()`/`executeTool()`,
+plain-value returns. See [`references/webmcp-spec-2026.md`](references/webmcp-spec-2026.md).
 
-## Why Use This Skill?
-- **Parity:** Functional parity between CLI agents and native browser assistants.
-- **Reliability:** Interactions remain consistent even if the website's UI changes.
-- **Efficiency:** Token consumption is reduced by ~90% for multi-step tasks.
+## Requirements
 
-## Installation
+- A browser MCP with an evaluate-script tool (e.g. the chrome-devtools MCP).
+- A WebMCP-capable browser **for real sites**: Chrome 149+ with
+  `chrome://flags/#enable-webmcp-testing` set to Enabled (or launched with
+  `--enable-features=WebMCP`), or a page that ships `@mcp-b/webmcp-polyfill`.
+  Without support, `document.modelContext` is `undefined` and the skill falls back.
 
-### For Gemini CLI
-Install directly from the GitHub repository:
+## Install
+
+Copy this folder into your Claude Code skills directory:
 
 ```bash
-gemini skills install https://github.com/jack-e-hobbs/webmcp-native-skill.git --scope user
+cp -r webmcp-native-skill ~/.claude/skills/webmcp-native
 ```
 
-Once installed, reload your session to activate the skill:
-```text
-/skills reload
-```
+The agent loads it on demand when a task involves discovering/calling a site's WebMCP tools.
 
-## Verify Installation
-1.  **List Skills:** Run `/skills list` and confirm `webmcp-native` is present.
-2.  **Compatibility Test:** Open [AmazingExperiences](https://jack-e-hobbs.github.io/webmcp-experiences-platform/) in Chrome Canary.
-3.  **Check Handshake:** Ask the agent: *"Verify WebMCP support and list available tools."*
-4.  **Confirm Sync:** Navigate to a product page and ask: *"What is the active experience ID in the WebMCP context?"*
+## Verify
+
+1. Open a WebMCP-capable page (e.g. the AmazingExperiences demo) in your flagged browser.
+2. Ask the agent: *"Discover this site's WebMCP tools and list them."*
+   → expect a tool list (e.g. `search_experiences`, `get_availability`, …).
+3. Ask: *"Use the WebMCP tools to find Melbourne experiences."*
+   → expect a deterministic `executeTool("search_experiences", { location: "Melbourne" })`
+   call returning results, not DOM scraping.
 
 ## License
 MIT
